@@ -3,6 +3,7 @@ from .models import Profile
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True, required=True)
@@ -45,3 +46,24 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = ['avatar', 'email', 'first_name', 'last_name', 'bio']
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """ Serializer to change user password """
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, validators=[validate_password])
+    confirm_password = serializers.CharField(required=True)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError("Les mots de passe ne correspondent pas.")
+        return data
+
+    def save(self, **kwargs):
+        user = self.context['request'].user
+        if not user.check_password(self.validated_data['old_password']):
+            raise serializers.ValidationError("L'ancien mot de passe est incorrect.")
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        self.context['request'].session.save()
+        return user

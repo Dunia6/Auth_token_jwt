@@ -1,10 +1,12 @@
 from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .serializers import UserSerializer, loginSerializer, ProfileSerializer, ProfileUpdateSerializer
+from .serializers import UserSerializer, loginSerializer, ProfileSerializer, ProfileUpdateSerializer, \
+    ChangePasswordSerializer
 from accounts.models import User, Profile
 
 # Create your views here.
@@ -142,4 +144,33 @@ class UserProfileUpdateViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ChangePasswordViewSet(viewsets.ModelViewSet):
+    """
+    Change password
+
+    parameters:
+        old_password: string
+        new_password: string
+        confirm_password: string
+
+    returns:
+        detail: string
+
+    """
+    permission_classes = [permissions.IsAuthenticated,]
+    serializer_class = ChangePasswordSerializer
+    http_method_names = ['post']
+
+    @action(detail=False, methods=['post'])
+    def change_password(self, request):
+        """
+        Met à jour le mot de passe de l'utilisateur connecté.
+        """
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"detail": "Mot de passe modifié avec succès."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
