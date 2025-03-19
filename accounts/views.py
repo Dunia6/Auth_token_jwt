@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .serializers import UserSerializer, loginSerializer, ProfileSerializer, ProfileUpdateSerializer, \
-    ChangePasswordSerializer
+    ChangePasswordSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 from accounts.models import User, Profile
 
 # Create your views here.
@@ -57,8 +57,9 @@ class LoginView(APIView):
 
             refresh = RefreshToken.for_user(user)
 
+            profile = get_object_or_404(Profile, user=user)
+            user_data = ProfileSerializer(profile).data
 
-            user_data = UserSerializer(user).data
 
             response = Response(
                 {
@@ -112,6 +113,13 @@ class LogoutView(APIView):
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
+    """
+    # User Profile ViewSet
+    ## Methods
+        * GET / View User Profile
+    ## Permissions
+        * Authenticated User
+    """
     queryset = Profile.objects.all()
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = ProfileSerializer
@@ -167,10 +175,62 @@ class ChangePasswordViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def change_password(self, request):
         """
-        Met à jour le mot de passe de l'utilisateur connecté.
+        Authentified User change password
+
+        ## Champs
+            * old_password
+            * new_password
+            * confirm_password
+        ## Methods
+            * POST /ChangePassword
+        ## Permissions
+            * Authenticated User
         """
         serializer = self.get_serializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response({"detail": "Mot de passe modifié avec succès."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetRequestView(APIView):
+    """
+    Request reset forgotten password
+
+    ## champs
+        * Email {**Provide email address**}
+    ## Methods
+        * POST /PasswordResetRequest
+    ## Permissions
+        * AllowAny
+    """
+    serializer_class = PasswordResetRequestSerializer
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Email envoyé avec un lien de réinitialisation."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    Reset password confirmation
+    ## Parameters
+        * uid {string}
+        * token {string}
+    ## Champs
+        * new_password {string}
+        * confirm_password {string}
+    ## Methods
+        * POST /PasswordResetConfirm
+    ## Permissions
+        * AllowAny
+    """
+    serializer_class = PasswordResetConfirmSerializer
+    def post(self, request, uid, token):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save(uid=uid, token=token)
+            return Response({"message": "Mot de passe mis à jour avec succès."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

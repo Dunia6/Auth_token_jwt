@@ -13,5 +13,7 @@ urlpatterns = [
     path('logout/', views.LogoutView.as_view(), name='logout'),
     path('update/profile/', views.UserProfileUpdateViewSet.as_view({'put': 'update'}), name='update_profile'),
     path('change_password/', views.ChangePasswordViewSet.as_view({'post':'change_password'}), name='change_password'),
+    path('forgot_password/', views.PasswordResetRequestView.as_view(), name='forgot_password'),
+    path('reset-password/<uid>/<token>/', views.PasswordResetConfirmView.as_view(), name='confirm_reset_password'),
     path('refreshAccessToken/', views.RefreshAccessTokenView.as_view(), name='refresh_access_token'),
 ]
